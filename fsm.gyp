@@ -1,11 +1,13 @@
 {
   'variables': {
     'fsm_sources' :  [
-                         'src/fsm/state_machine.cc',   'src/fsm/state_machine.hh',
-                         'src/fsm/transition.cc',      'src/fsm/transition.hh',
-                         'src/fsm/action.cc',          'src/fsm/action.hh',
-                         'src/fsm/loop.cc',            'src/fsm/loop.hh',
-                         'src/fsm/timer.cc',           'src/fsm/timer.hh',
+                       'src/fsm/state_machine.cc',   'src/fsm/state_machine.hh',
+                       'src/fsm/transition.cc',      'src/fsm/transition.hh',
+                       'src/fsm/action.cc',          'src/fsm/action.hh',
+                       'src/fsm/loop.cc',            'src/fsm/loop.hh',
+                       'src/fsm/timer.cc',           'src/fsm/timer.hh',
+                       # header only helpers
+                       'src/fsm/exception.hh',
                      ],
   },
   'conditions': [
