@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <fsm/fsm.hh>
+#include <fsm/state_machine.hh>
 #include <future>
 #include <iostream>
 #include <string.h>
