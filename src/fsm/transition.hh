@@ -15,27 +15,31 @@ namespace virtdb { namespace fsm {
   class transition
   {
   public:
-    typedef std::function<void(state_machine & sm,
-                               transition & trans,
-                               uint16_t seqno,
-                               const std::string & msg)> report_error;
-  private:
-    typedef std::function<bool(uint16_t seqno,
+    typedef std::function<void(uint16_t seqno,
                                transition & trans,
                                state_machine & sm,
-                               uint64_t iteration,
-                               const timer::clock_type::time_point & started_at,
-                               uint16_t timer_at_seqno)> action_fun;
+                               const std::string & msg)> report_error;
+  private:
+    enum action_result {
+      ok,
+      failed,
+      timeout
+    };
+    
+    typedef std::function<action_result(uint16_t seqno,
+                                        transition & trans,
+                                        state_machine & sm)> action_fun;
     
     typedef std::map<uint16_t, action_fun>                      action_map;
     typedef std::map<uint16_t, timer::clock_type::time_point>   start_map;
     
     uint16_t     state_;
     uint16_t     event_;
-    uint16_t     next_state_;
+    uint16_t     timeout_state_;
+    uint16_t     error_state_;
+    uint16_t     default_state_;
     std::string  description_;
     action_map   all_actions_;
-    action_map   timers_;
     start_map    starts_;
     
     // disable default construction
@@ -44,6 +48,9 @@ namespace virtdb { namespace fsm {
     // disable copying until properly implemented
     transition(const transition &) = delete;
     transition & operator=(const transition &) = delete;
+    
+    bool timed_out(uint16_t seqno,
+                   state_machine & sm);
     
   public:
     typedef std::shared_ptr<transition> sptr;
