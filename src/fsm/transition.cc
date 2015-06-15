@@ -19,17 +19,40 @@ namespace virtdb { namespace fsm {
   transition::timed_out(uint16_t seqno,
                         state_machine & sm)
   {
+    auto dummy_trace = [](uint16_t seqno,
+                          const std::string & desc,
+                          const transition & trans,
+                          const state_machine & sm) {};
+    
     for( auto s : starts_ )
     {
       auto a = all_actions_.find(s.first);
       if( a != all_actions_.end() )
       {
-        auto res = ((a->second)(seqno, *this, sm));
+        auto res = ((a->second)(s.first,
+                                *this,
+                                sm,
+                                dummy_trace));
         if( res == timeout )
           return true;
       }
     }
     return false;
+  }
+  
+  const std::string &
+  transition::seqno_description(uint16_t seqno)
+  {
+    static const std::string empty;
+    const std::string & ret = empty;
+    
+    auto it = seqno_descs_.find(seqno);
+    if( it != seqno_descs_.end() )
+    {
+      const std::string & tmp = (it->second)();
+      return tmp;
+    }
+    return ret;
   }
   
   void
@@ -38,13 +61,15 @@ namespace virtdb { namespace fsm {
   {
     auto f = [a](uint16_t seqno,
                  transition & trans,
-                 state_machine & sm)
+                 state_machine & sm,
+                 trace_fun trace)
     {
       a->execute(seqno, trans, sm);
       return ok;
     };
     
     all_actions_[seqno] = f;
+    seqno_descs_[seqno] = [a]() { return a->description(); };
   }
   
   void
@@ -53,29 +78,39 @@ namespace virtdb { namespace fsm {
   {
     auto f = [l,this](uint16_t seqno,
                       transition & trans,
-                      state_machine & sm)
+                      state_machine & sm,
+                      trace_fun trace)
     {
-      bool result = true;
+      action_result result = ok;
       uint64_t iteration = 0;
-      while( result )
+      while( result == ok)
       {
         if( timed_out(seqno, sm) )
         {
-          return timeout;
+          result = timeout;
         }
         else
         {
-          result = l->execute(seqno,
-                              trans,
-                              sm,
-                              iteration);
+          if( !l->execute(seqno,
+                          trans,
+                          sm,
+                          iteration) )
+          {
+            break;
+          }
         }
         ++iteration;
       }
-      return (result ? ok : failed);
+      if( trace && iteration != 1 )
+      {
+        std::string trace_str = l->description() + "[" + std::to_string(iteration) +"]";
+        trace( seqno, trace_str, trans, sm );
+      }
+      return result;
     };
     
     all_actions_[seqno] = f;
+    seqno_descs_[seqno] = [l]() { return l->description(); };
   }
   
   void
@@ -84,7 +119,8 @@ namespace virtdb { namespace fsm {
   {
     auto f = [t,this](uint16_t seqno,
                       transition & trans,
-                      state_machine & sm)
+                      state_machine & sm,
+                      trace_fun trace)
     {
       {
         if( starts_.count(seqno) == 0 )
@@ -97,6 +133,7 @@ namespace virtdb { namespace fsm {
     };
     
     all_actions_[seqno] = f;
+    seqno_descs_[seqno] = [t]() { return t->description(); };
   }
   
   void
@@ -105,13 +142,20 @@ namespace virtdb { namespace fsm {
   {
     auto f = [timer_at_seqno, this](uint16_t seqno,
                                     transition & trans,
-                                    state_machine & sm)
+                                    state_machine & sm,
+                                    trace_fun trace)
     {
       starts_.erase(seqno);
       return ok;
     };
     
     all_actions_[seqno] = f;
+    
+    std::string clear{"CLEAR["};
+    clear += std::to_string(timer_at_seqno)+"]: ";
+    clear += seqno_description(timer_at_seqno);
+    
+    seqno_descs_[seqno] = [clear](){ return clear; };
   }
    
   void
@@ -134,7 +178,7 @@ namespace virtdb { namespace fsm {
    
   uint16_t
   transition::execute(state_machine & sm,
-                      report_error on_error)
+                      trace_fun trace)
   {
     bool tmout    = false;
     bool stopped  = false;
@@ -146,6 +190,14 @@ namespace virtdb { namespace fsm {
       for( auto a : all_actions_ )
       {
         last_seqno = a.first;
+        if( trace )
+        {
+          std::string desc = seqno_description(last_seqno);
+          trace(last_seqno,
+                desc,
+                *this,
+                sm);
+        }
         if( timed_out(last_seqno, sm) )
         {
           tmout = true;
@@ -153,7 +205,10 @@ namespace virtdb { namespace fsm {
         }
         else
         {
-          auto result = (a.second)(last_seqno, *this, sm);
+          auto result = (a.second)(last_seqno,
+                                   *this,
+                                   sm,
+                                   trace);
           if( result == timeout )
           {
             tmout = true;
@@ -169,12 +224,17 @@ namespace virtdb { namespace fsm {
     }
     catch (const std::exception & e)
     {
-      // TODO log error
+      std::string desc = seqno_description(last_seqno);
+      std::string trace_str = desc + "[EXCEPTION]";
+      trace( last_seqno, trace_str, *this, sm );
       thrown = true;
     }
     catch (...)
     {
-      // TODO log error
+      thrown = true;
+      std::string desc = seqno_description(last_seqno);
+      std::string trace_str = desc + "[EXCEPTION]";
+      trace( last_seqno, trace_str, *this, sm );
       thrown = true;
     }
 
@@ -202,6 +262,18 @@ namespace virtdb { namespace fsm {
   transition::description() const
   {
     return description_;
+  }
+  
+  uint16_t
+  transition::state() const
+  {
+    return state_;
+  }
+  
+  uint16_t
+  transition::event() const
+  {
+    return event_;
   }
   
   transition::~transition() {}

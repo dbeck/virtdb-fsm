@@ -1,11 +1,12 @@
 #include <fsm/state_machine.hh>
+#include <fsm/exception.hh>
 
 namespace virtdb { namespace fsm {
   
   state_machine::state_machine(const std::string & description,
-                               report_error on_error)
+                               trace_fun trace)
   : description_{description},
-    on_error_{on_error}
+    trace_{trace}
   {
   }
   
@@ -16,15 +17,51 @@ namespace virtdb { namespace fsm {
   }
   
   void
-  state_machine::add_transition(transition::sptr & trans)
+  state_machine::add_transition(transition::sptr trans)
   {
-    // TODO
+    if( trans )
+    {
+      state_event se{trans->state(), trans->event()};
+      transitions_[se] = trans;
+    }
+    else
+    {
+      THROW_("invalid transition received");
+    }
   }
   
   void
-  state_machine::run()
+  state_machine::enqueue(uint16_t event)
   {
-    // TODO
+    lock lck(event_mtx_);
+    events_.push(event);
+  }
+  
+  uint16_t
+  state_machine::run(uint16_t initial_state)
+  {
+    uint16_t act_state = initial_state;
+    while( true )
+    {
+      uint16_t act_event = 0;
+      {
+        lock lck(event_mtx_);
+        if( events_.empty() )
+          break;
+        
+        act_event = events_.front();
+        events_.pop();
+      }
+      
+      state_event se{act_state, act_event};
+      
+      auto it = transitions_.find(se);
+      if( it == transitions_.end() )
+        break;
+      else
+        act_state = (it->second)->execute(*this, trace_);
+    }
+    return act_state;
   }
 
   state_machine::~state_machine() {}
