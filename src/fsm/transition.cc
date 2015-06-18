@@ -184,6 +184,9 @@ namespace virtdb { namespace fsm {
     bool stopped  = false;
     bool thrown   = false;
     uint16_t last_seqno = 0;
+
+    // clear timers
+    starts_.clear();
     
     try
     {
