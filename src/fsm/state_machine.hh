@@ -42,12 +42,13 @@ namespace virtdb { namespace fsm {
     typedef std::shared_ptr<state_machine> sptr;
     
     state_machine(const std::string & description,
-                  trace_fun trace=[](uint16_t seqno,
-                                     const std::string & desc,
-                                     const transition & trans,
-                                     const state_machine & sm){});
+                  trace_fun trace_cb=[](uint16_t seqno,
+                                        const std::string & desc,
+                                        const transition & trans,
+                                        const state_machine & sm){});
     
     const std::string & description() const;
+    trace_fun trace_cb();
     
     void add_transition(transition::sptr trans);
     void enqueue(uint16_t event);

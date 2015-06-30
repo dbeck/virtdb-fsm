@@ -190,37 +190,41 @@ namespace virtdb { namespace fsm {
     
     try
     {
-      for( auto a : all_actions_ )
+      if( all_actions_.empty() )
       {
-        last_seqno = a.first;
-        if( trace )
+        trace(0, "<NO ACTION>", *this, sm);
+      }
+      else
+      {
+        for( auto a : all_actions_ )
         {
-          std::string desc = seqno_description(last_seqno);
-          trace(last_seqno,
-                desc,
-                *this,
-                sm);
-        }
-        if( timed_out(last_seqno, sm) )
-        {
-          tmout = true;
-          break;
-        }
-        else
-        {
-          auto result = (a.second)(last_seqno,
-                                   *this,
-                                   sm,
-                                   trace);
-          if( result == timeout )
+          last_seqno = a.first;
+          if( trace )
+          {
+            std::string desc = seqno_description(last_seqno);
+            trace(last_seqno, desc, *this, sm);
+          }
+          if( timed_out(last_seqno, sm) )
           {
             tmout = true;
             break;
           }
-          else if( result == failed )
+          else
           {
-            stopped = true;
-            break;
+            auto result = (a.second)(last_seqno,
+                                     *this,
+                                     sm,
+                                     trace);
+            if( result == timeout )
+            {
+              tmout = true;
+              break;
+            }
+            else if( result == failed )
+            {
+              stopped = true;
+              break;
+            }
           }
         }
       }

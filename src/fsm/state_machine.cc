@@ -1,12 +1,13 @@
 #include <fsm/state_machine.hh>
 #include <fsm/exception.hh>
+#include <sstream>
 
 namespace virtdb { namespace fsm {
   
   state_machine::state_machine(const std::string & description,
-                               trace_fun trace)
+                               trace_fun trace_cb)
   : description_{description},
-    trace_{trace}
+    trace_{trace_cb}
   {
   }
   
@@ -14,6 +15,12 @@ namespace virtdb { namespace fsm {
   state_machine::description() const
   {
     return description_;
+  }
+  
+  state_machine::trace_fun
+  state_machine::trace_cb()
+  {
+    return trace_;
   }
   
   void
@@ -97,6 +104,17 @@ namespace virtdb { namespace fsm {
       {
         act_state = (it->second)->execute(*this, trace_);
       }
+      else
+      {
+        // no such transitions
+        if( trace_ )
+        {
+          std::ostringstream os;
+          os << "NO SUCH TRANSITION: [" << state_name(act_state) << " + " << event_name(act_event) << ']';
+          transition tr{act_state, act_event, 0, os.str()};
+          trace_(0,"<NO ACTION>",tr,*this);
+        }
+      }
     }
     return act_state;
   }
@@ -119,7 +137,7 @@ namespace virtdb { namespace fsm {
     if( it != state_names_.end() )
       return it->second;
     else
-      return std::string();
+      return std::to_string(st);
   }
 
   void
@@ -138,7 +156,7 @@ namespace virtdb { namespace fsm {
     if( it != event_names_.end() )
       return it->second;
     else
-      return std::string();
+      return std::to_string(ev);
   }
   
 }}
