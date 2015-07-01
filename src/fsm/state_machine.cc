@@ -68,7 +68,7 @@ namespace virtdb { namespace fsm {
   }
   
   bool
-  state_machine::queue_has(uint16_t event)
+  state_machine::queue_has(uint16_t event) const
   {
     lock lck(event_mtx_);
     for( auto const & e : events_ )
@@ -79,6 +79,17 @@ namespace virtdb { namespace fsm {
       }
     }
     return false;
+  }
+  
+  uint64_t
+  state_machine::queue_size() const
+  {
+    uint64_t ret = 0;
+    {
+      lock lck(event_mtx_);
+      ret = events_.size();
+    }
+    return ret;
   }
   
   uint16_t

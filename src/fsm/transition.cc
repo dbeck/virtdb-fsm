@@ -232,7 +232,7 @@ namespace virtdb { namespace fsm {
     catch (const std::exception & e)
     {
       std::string desc = seqno_description(last_seqno);
-      std::string trace_str = desc + "[EXCEPTION]";
+      std::string trace_str = desc + " [EXCEPTION] :" + e.what();
       trace( last_seqno, trace_str, *this, sm );
       thrown = true;
     }
@@ -240,7 +240,7 @@ namespace virtdb { namespace fsm {
     {
       thrown = true;
       std::string desc = seqno_description(last_seqno);
-      std::string trace_str = desc + "[EXCEPTION]";
+      std::string trace_str = desc + " [EXCEPTION] : unknown";
       trace( last_seqno, trace_str, *this, sm );
       thrown = true;
     }

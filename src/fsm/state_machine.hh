@@ -55,7 +55,8 @@ namespace virtdb { namespace fsm {
     void enqueue_unique(uint16_t event);
     void enqueue_if_empty(uint16_t event);
     uint16_t run(uint16_t initial_state=0);
-    bool queue_has(uint16_t event);
+    bool queue_has(uint16_t event) const;
+    uint64_t queue_size() const;
     
     void state_name(uint16_t st, const std::string & name);
     std::string state_name(uint16_t st) const;
